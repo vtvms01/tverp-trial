@@ -24,8 +24,30 @@ chờ review. **Mỗi task một branch + một PR.**
 - `go vet ./...` phải sạch; `gofmt`/`goimports` đã format.
 - Code phải đọc được như code xung quanh: đặt tên, comment, idiom đồng nhất.
 - Khi sửa code có sẵn: **không được làm hỏng test đang xanh**.
+- **Open-book:** được tra cứu tài liệu tự do — Go docs (`pkg.go.dev`), tài liệu thư viện,
+  internet, sách. Không phải học thuộc; mục tiêu là giải đúng và hiểu.
 - Được dùng AI hỗ trợ, nhưng bạn phải **hiểu và bảo vệ được** mọi dòng mình nộp
   (sẽ có buổi trao đổi trực tiếp: giải thích quyết định + mở rộng code tại chỗ).
+
+## Thời lượng & kỳ vọng
+
+Đây là bài **open-book**, làm tại chỗ hoặc tại nhà tùy thỏa thuận. Thời lượng ước tính
+cho một dev Go vững cơ bản:
+
+| Task | Ước tính | Ghi chú |
+|---|---|---|
+| T1 | ~3–4h | mechanical nhưng cần phủ edge-case |
+| T2 | ~6–8h | nặng tư duy thiết kế nhất |
+| T3 | ~3–4h | |
+| T4 | ~3–4h | |
+| T5 | ~4–6h | biến thiên theo năng lực debug |
+| T6 | ~3–4h | |
+| T7 | ~2–3h | |
+| **Tổng** | **~4–5 ngày làm việc** | |
+
+**Không bắt buộc làm hết.** Khung thử việc gợi ý ~1 tuần. Kỳ vọng tối thiểu: T1, T2, T4, T5
+(cốt lõi). Làm thêm T3, T6, T7 là điểm cộng. **Chất lượng + độ hiểu > số lượng** — thà
+làm kỹ 4 task và bảo vệ được, hơn làm vội cả 7.
 
 ## Thứ tự khuyến nghị
 
