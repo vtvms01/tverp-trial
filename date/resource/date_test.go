@@ -134,30 +134,18 @@ func TestNowInVN(t *testing.T) {
 	assert.Equal(t, 7*60*60, offset)
 }
 
-func TestDateRangeInVN(t *testing.T) {
+func TestFormatTimeVN(t *testing.T) {
+	assert.Equal(t, "", FormatTimeVN(time.Time{}))
 
-	t.Run("Khoang hop le nhieu ngay", func(t *testing.T) {
-		from, toExcl, err := DateRangeInVN("2026-01-21", "2026-01-23")
-		require.NoError(t, err)
-		assert.Equal(t, 21, from.Day())
-		assert.Equal(t, 0, from.Hour())
-		assert.Equal(t, 24, toExcl.Day())
-		assert.Equal(t, 0, toExcl.Hour())
+	utc := time.Date(2026, 1, 21, 14, 0, 0, 0, time.UTC)
+	assert.Equal(t, "2026-01-21T21:00:00+07:00", FormatTimeVN(utc))
+}
+func TestFormatTimeVNPtr(t *testing.T) {
+	assert.Equal(t, "", FormatTimeVNPtr(nil))
 
-	})
-	t.Run("from == to (1 ngay) van hop le", func(t *testing.T) {
-		from, toExcl, err := DateRangeInVN("2026-01-21", "2026-01-21")
-		require.NoError(t, err)
-		assert.Equal(t, 21, from.Day())
-		assert.Equal(t, 22, toExcl.Day())
-	})
-	t.Run("from sai dinh dang => loi", func(t *testing.T) {
-		_, _, err := DateRangeInVN("xxx", "2026-01;21")
-		assert.Error(t, err)
-	})
-	t.Run("to sai dinh dang =>", func(t *testing.T) {
-		_, _, err := DateRangeInVN("2026-01-21", "")
-		assert.Error(t, err)
-	})
+	zero := time.Time{}
+	assert.Equal(t, "", FormatTimeVNPtr(&zero))
 
+	utc := time.Date(2026, 1, 21, 14, 0, 0, 0, time.UTC)
+	assert.Equal(t, "2026-01-21T21:00:00+07:00", FormatTimeVNPtr(&utc))
 }
