@@ -22,12 +22,6 @@ import "strings"
 //
 // Algorithm mirrors FE parser: single-pass scanner with paired-marker check.
 // O(n) time, O(n) output.
-func StripInlineMarkdown(input string) string {
-	if input == "" {
-		return ""
-	}
-	return strings.Join(extractText(parseTokens(input)), "")
-}
 
 type markdownToken struct {
 	isText   bool
@@ -131,14 +125,41 @@ func findCloseMarker(input string, start int, token string) int {
 	return -1
 }
 
-func extractText(tokens []markdownToken) []string {
-	out := []string{}
+// func StripInlineMarkdown(input string) string {
+// 	if input == "" {
+// 		return ""
+// 	}
+// 	return strings.Join(extractText(parseTokens(input)), "")
+// }
+
+func StripInlineMarkdown(input string) string {
+	if input == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(input)) // cấp sẵn đủ chỗ → bớt cấp phát lại
+	writeText(&b, parseTokens(input))
+	return b.String()
+}
+
+// func extractText(tokens []markdownToken) []string {
+// 	out := []string{}
+// 	for _, t := range tokens {
+// 		if t.isText {
+// 			out = append(out, t.text)
+// 			continue
+// 		}
+// 		out = append(out, extractText(t.children)...)
+// 	}
+// 	return out
+// }
+
+func writeText(b *strings.Builder, tokens []markdownToken) {
 	for _, t := range tokens {
 		if t.isText {
-			out = append(out, t.text)
-			continue
+			b.WriteString(t.text)
+		} else {
+			writeText(b, t.children) // đệ quy y như cũ
 		}
-		out = append(out, extractText(t.children)...)
 	}
-	return out
 }
