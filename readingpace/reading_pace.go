@@ -113,6 +113,7 @@ type PaceResult struct {
 //  5. spoken_seconds = floor(adjusted_word_count / effective_wpm × 60)
 func CalculatePace(text string, cfg ReadingPaceConfig) PaceResult {
 	if cfg.DefaultWPM <= 0 {
+
 		cfg.DefaultWPM = 160.0 // canonical Vietnamese broadcast pace
 	}
 	if cfg.LanguageFactor <= 0 {
@@ -132,7 +133,7 @@ func CalculatePace(text string, cfg ReadingPaceConfig) PaceResult {
 		extra := 0.0
 		for _, w := range words {
 			if _, ok := cfg.PronunciationDict[w]; ok {
-				extra += DifficultNameMultiplier
+				extra += (DifficultNameMultiplier - 1)
 			}
 		}
 		adjustedWC += extra
@@ -247,7 +248,7 @@ func expandNumber(s string) string {
 		case '6':
 			tensWord = "sau muoi"
 		case '7':
-			tensWord = "bay"
+			tensWord = "bay muoi"
 		case '8':
 			tensWord = "tam muoi"
 		case '9':
