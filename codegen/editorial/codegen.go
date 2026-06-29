@@ -7,36 +7,36 @@ import (
 	"strings"
 )
 
-// GenerateDocumentCode produces an unique document code (immutable, max 100 chars).
+// GenerateDocumentCode sinh một document code duy nhất (bất biến, tối đa 100 ký tự).
 //
-// Format: {prefix}-{YYYYMMDD}-{6char-random}
-// Example: PROPOSAL-20260502-7K2NQ4
+// Định dạng: {prefix}-{YYYYMMDD}-{6char-random}
+// Ví dụ: PROPOSAL-20260502-7K2NQ4
 //
-// Caller passes prefix per document_type (e.g., PROPOSAL, SCRIPT_MASTER, FORMAT_BIBLE).
-// Random suffix uses base32 (no padding, uppercase, alphanumeric — URL-safe, no
-// confusable chars) for collision safety. 6 chars = 32^6 ≈ 1B entropy per
-// (prefix, day) — collision probability negligible at expected scale.
+// Bên gọi truyền prefix theo document_type (vd PROPOSAL, SCRIPT_MASTER, FORMAT_BIBLE).
+// Hậu tố ngẫu nhiên dùng base32 (không padding, viết hoa, chữ-số — an toàn URL, không có
+// ký tự dễ nhầm) để tránh trùng. 6 ký tự = 32^6 ≈ 1 tỷ entropy mỗi
+// (prefix, ngày) — xác suất trùng không đáng kể ở quy mô kỳ vọng.
 //
-// Repository ExistsByCode + Create UNIQUE constraint provides safety net for
-// the rare collision case (caller retries Create on dup-key error).
+// Repository ExistsByCode + ràng buộc UNIQUE khi Create là lưới an toàn cho
+// trường hợp trùng hiếm gặp (bên gọi retry Create khi lỗi trùng key).
 func GenerateDocumentCode(prefix string) string {
 	day := TodayInVN().Format("20060102")
 	suffix := randomSuffix(6)
 	return fmt.Sprintf("%s-%s-%s", strings.ToUpper(prefix), day, suffix)
 }
 
-// GeneratePackageCode produces an unique content_package code.
-// Format: PKG-{YYYYMMDD}-{6char-random}
+// GeneratePackageCode sinh một content_package code duy nhất.
+// Định dạng: PKG-{YYYYMMDD}-{6char-random}
 func GeneratePackageCode() string {
 	day := TodayInVN().Format("20060102")
 	return fmt.Sprintf("PKG-%s-%s", day, randomSuffix(6))
 }
 
-// randomSuffix returns base32-encoded random string of length n.
-// Uses crypto/rand for security; base32 alphabet excludes confusable chars
-// (no 0/O, 1/I/L) per RFC 4648 standard alphabet.
+// randomSuffix trả về chuỗi ngẫu nhiên mã hóa base32 độ dài n.
+// Dùng crypto/rand cho bảo mật; bảng chữ base32 loại bỏ ký tự dễ nhầm
+// (không có 0/O, 1/I/L) theo bảng chuẩn RFC 4648.
 func randomSuffix(n int) string {
-	// 5 bytes encode to 8 base32 chars; ceil(n*5/8) bytes needed
+	// 5 byte mã hóa thành 8 ký tự base32; cần ceil(n*5/8) byte
 	bytes := make([]byte, (n*5+7)/8)
 	_, _ = rand.Read(bytes)
 	enc := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(bytes)

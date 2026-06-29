@@ -17,12 +17,12 @@ func init() {
 	}
 }
 
-// VNLocation returns the Vietnam timezone location.
+// VNLocation trả về *time.Location của múi giờ Việt Nam.
 func VNLocation() *time.Location {
 	return vnLocation
 }
 
-// ParseDateInVN parses "YYYY-MM-DD" string and returns time in VN timezone.
+// ParseDateInVN parse chuỗi "YYYY-MM-DD" và trả về time theo múi giờ VN.
 func ParseDateInVN(dateStr string) (time.Time, error) {
 	t, err := time.ParseInLocation("2006-01-02", dateStr, vnLocation)
 	if err != nil {
@@ -31,38 +31,38 @@ func ParseDateInVN(dateStr string) (time.Time, error) {
 	return t, nil
 }
 
-// NormalizeDateToVN converts any time.Time to VN date-only (00:00:00 VN).
+// NormalizeDateToVN đưa mọi time.Time về chỉ-ngày theo VN (00:00:00 VN).
 func NormalizeDateToVN(t time.Time) time.Time {
 	vnTime := t.In(vnLocation)
 	return time.Date(vnTime.Year(), vnTime.Month(), vnTime.Day(), 0, 0, 0, 0, vnLocation)
 }
 
-// TodayInVN returns today's date at 00:00:00 in Vietnam timezone.
+// TodayInVN trả về ngày hôm nay lúc 00:00:00 theo múi giờ Việt Nam.
 func TodayInVN() time.Time {
 	now := time.Now().In(vnLocation)
 	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, vnLocation)
 }
 
-// NowInVN returns current time in Vietnam timezone.
+// NowInVN trả về thời điểm hiện tại theo múi giờ Việt Nam.
 func NowInVN() time.Time {
 	return time.Now().In(vnLocation)
 }
 
-// FormatDateVN formats time.Time to "YYYY-MM-DD" string.
+// FormatDateVN format time.Time thành chuỗi "YYYY-MM-DD".
 func FormatDateVN(t time.Time) string {
 	return t.In(vnLocation).Format("2006-01-02")
 }
 
-// FormatTimeVN formats time.Time to RFC3339 string with +07:00 VN offset.
-// CRITICAL: Go time.Time.Format() uses t's OWN location. DB TIMESTAMPTZ scan returns time.Time
-// with UTC location after pgx driver decode → without explicit .In(vnLocation) BEFORE Format(),
-// output is "Z" suffix not "+07:00". Use this helper for outbox payload string fields + any
-// non-DTO timestamp serialization.
+// FormatTimeVN format time.Time thành chuỗi RFC3339 với offset VN +07:00.
+// QUAN TRỌNG: Go time.Time.Format() dùng location CỦA CHÍNH t. DB TIMESTAMPTZ khi scan trả về time.Time
+// với location UTC sau khi pgx driver giải mã → nếu không .In(vnLocation) tường minh TRƯỚC Format(),
+// output sẽ có hậu tố "Z" thay vì "+07:00". Dùng helper này cho trường chuỗi payload outbox + mọi
+// serialization timestamp không phải DTO.
 //
-// For DTO Response time.Time fields (D41 lock — preserve native time.Time), use
-// `.In(util.VNLocation())` at mapper time so Go JSON encoder picks up VN location for "+07:00".
+// Với trường time.Time trong DTO Response (chốt D41 — giữ nguyên time.Time gốc), dùng
+// `.In(util.VNLocation())` tại lúc map để Go JSON encoder lấy location VN cho "+07:00".
 //
-// Empty time.Time → empty string (caller can distinguish "not set" from real time).
+// time.Time rỗng → chuỗi rỗng (bên gọi phân biệt được "chưa đặt" với thời gian thật).
 func FormatTimeVN(t time.Time) string {
 	if t.IsZero() {
 		return ""
@@ -70,8 +70,8 @@ func FormatTimeVN(t time.Time) string {
 	return t.In(vnLocation).Format(time.RFC3339)
 }
 
-// FormatTimeVNPtr is the nullable counterpart of FormatTimeVN for *time.Time fields.
-// nil OR zero → empty string.
+// FormatTimeVNPtr là biến thể nullable của FormatTimeVN cho trường *time.Time.
+// nil HOẶC zero → chuỗi rỗng.
 func FormatTimeVNPtr(t *time.Time) string {
 	if t == nil {
 		return ""

@@ -17,12 +17,12 @@ func init() {
 	}
 }
 
-// VNLocation returns the Vietnam timezone location.
+// VNLocation trả về *time.Location của múi giờ Việt Nam.
 func VNLocation() *time.Location {
 	return vnLocation
 }
 
-// ParseDateInVN parses "YYYY-MM-DD" string and returns time in VN timezone.
+// ParseDateInVN parse chuỗi "YYYY-MM-DD" và trả về time theo múi giờ VN.
 func ParseDateInVN(dateStr string) (time.Time, error) {
 	t, err := time.ParseInLocation("2006-01-02", dateStr, vnLocation)
 	if err != nil {
@@ -31,19 +31,19 @@ func ParseDateInVN(dateStr string) (time.Time, error) {
 	return t, nil
 }
 
-// NormalizeDateToVN converts any time.Time to VN date-only (00:00:00 VN).
+// NormalizeDateToVN đưa mọi time.Time về chỉ-ngày theo VN (00:00:00 VN).
 func NormalizeDateToVN(t time.Time) time.Time {
 	vnTime := t.In(vnLocation)
 	return time.Date(vnTime.Year(), vnTime.Month(), vnTime.Day(), 0, 0, 0, 0, vnLocation)
 }
 
-// TodayInVN returns today's date at 00:00:00 in Vietnam timezone.
+// TodayInVN trả về ngày hôm nay lúc 00:00:00 theo múi giờ Việt Nam.
 func TodayInVN() time.Time {
 	now := time.Now().In(vnLocation)
 	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, vnLocation)
 }
 
-// FormatDateVN formats time.Time to "YYYY-MM-DD" string in VN timezone.
+// FormatDateVN format time.Time thành chuỗi "YYYY-MM-DD" theo múi giờ VN.
 func FormatDateVN(t time.Time) string {
 	return t.In(vnLocation).Format("2006-01-02")
 }
