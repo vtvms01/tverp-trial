@@ -17,12 +17,12 @@ func init() {
 	}
 }
 
-// VNLocation returns the Vietnam timezone location.
+// VNLocation trả về *time.Location của múi giờ Việt Nam.
 func VNLocation() *time.Location {
 	return vnLocation
 }
 
-// ParseDateInVN parses "YYYY-MM-DD" string and returns time in VN timezone.
+// ParseDateInVN parse chuỗi "YYYY-MM-DD" và trả về time theo múi giờ VN.
 func ParseDateInVN(dateStr string) (time.Time, error) {
 	t, err := time.ParseInLocation("2006-01-02", dateStr, vnLocation)
 	if err != nil {
@@ -31,25 +31,25 @@ func ParseDateInVN(dateStr string) (time.Time, error) {
 	return t, nil
 }
 
-// NormalizeDateToVN converts any time.Time to VN date-only (00:00:00 VN).
+// NormalizeDateToVN đưa mọi time.Time về chỉ-ngày theo VN (00:00:00 VN).
 func NormalizeDateToVN(t time.Time) time.Time {
 	vnTime := t.In(vnLocation)
 	return time.Date(vnTime.Year(), vnTime.Month(), vnTime.Day(), 0, 0, 0, 0, vnLocation)
 }
 
-// TodayInVN returns today's date at 00:00:00 in Vietnam timezone.
+// TodayInVN trả về ngày hôm nay lúc 00:00:00 theo múi giờ Việt Nam.
 func TodayInVN() time.Time {
 	now := time.Now().In(vnLocation)
 	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, vnLocation)
 }
 
-// NowInVN returns current time in Vietnam timezone.
+// NowInVN trả về thời điểm hiện tại theo múi giờ Việt Nam.
 func NowInVN() time.Time {
 	return time.Now().In(vnLocation)
 }
 
-// ResolveAirDatetime determines air datetime from available sources (DD8 shared helper).
-// Priority: planned_start_at > broadcast_start_time + scheduled_date > error.
+// ResolveAirDatetime xác định thời điểm phát sóng từ các nguồn sẵn có (helper dùng chung DD8).
+// Ưu tiên: planned_start_at > broadcast_start_time + scheduled_date > lỗi.
 func ResolveAirDatetime(plannedStartAt *time.Time, broadcastStartTime *string, scheduledDate time.Time) (*time.Time, error) {
 	if plannedStartAt != nil {
 		t := plannedStartAt.In(vnLocation)
@@ -57,14 +57,14 @@ func ResolveAirDatetime(plannedStartAt *time.Time, broadcastStartTime *string, s
 	}
 
 	if broadcastStartTime != nil && *broadcastStartTime != "" {
-		// Parse TIME "HH:MM" or "0000-01-01THH:MM:SSZ" format from channel_cache
+		// Parse TIME dạng "HH:MM" hoặc "0000-01-01THH:MM:SSZ" từ channel_cache
 		var hour, min int
 		parsed := false
-		// Try "HH:MM" first
+		// Thử "HH:MM" trước
 		if _, err := fmt.Sscanf(*broadcastStartTime, "%d:%d", &hour, &min); err == nil {
 			parsed = true
 		}
-		// Try extracting from timestamp format "0000-01-01T14:00:00Z"
+		// Thử trích từ định dạng timestamp "0000-01-01T14:00:00Z"
 		if !parsed {
 			t, err := time.Parse(time.RFC3339, *broadcastStartTime)
 			if err == nil {
@@ -83,7 +83,7 @@ func ResolveAirDatetime(plannedStartAt *time.Time, broadcastStartTime *string, s
 	return nil, fmt.Errorf("cannot resolve air datetime: no planned_start_at and no broadcast_start_time")
 }
 
-// FormatDateVN formats time.Time to "YYYY-MM-DD" string.
+// FormatDateVN format time.Time thành chuỗi "YYYY-MM-DD".
 func FormatDateVN(t time.Time) string {
 	return t.In(vnLocation).Format("2006-01-02")
 }
