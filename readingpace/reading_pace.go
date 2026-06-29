@@ -1,16 +1,16 @@
-// Package readingpace estimates spoken duration of Vietnamese text.
+// Package readingpace ước lượng thời lượng đọc (nói) của text tiếng Việt.
 //
-// Vietnamese-aware text normalization + WPM-based duration calculation.
+// Chuẩn hóa text theo tiếng Việt + tính thời lượng dựa trên WPM (số từ mỗi phút).
 //
-// Formula:
+// Công thức:
 //
-//	spoken_text_seconds = adjusted_word_count / effective_wpm × 60
-//	effective_wpm       = configured words-per-minute × language_factor × difficulty_factor
+//	so_giay_noi  = so_tu_da_dieu_chinh / wpm_hieu_dung × 60
+//	wpm_hieu_dung = wpm_cau_hinh × he_so_ngon_ngu × he_so_do_kho
 //
-// Vietnamese normalization:
-//   - "TP.HCM" → "Thanh pho Ho Chi Minh" (5 words)
-//   - "19h45" → "muoi chin gio bon muoi lam" (spoken form)
-//   - "7,2%" → "bay phay hai phan tram" (spoken form)
+// Chuẩn hóa tiếng Việt:
+//   - "TP.HCM" → "Thanh pho Ho Chi Minh" (5 từ)
+//   - "19h45" → "muoi chin gio bon muoi lam" (dạng đọc)
+//   - "7,2%" → "bay phay hai phan tram" (dạng đọc)
 package timing
 
 import (
@@ -18,22 +18,22 @@ import (
 	"strings"
 )
 
-// DefaultLanguageFactor for Vietnamese.
+// DefaultLanguageFactor — hệ số ngôn ngữ mặc định cho tiếng Việt.
 const DefaultLanguageFactor = 1.0
 
-// DefaultDifficultyFactor for normal text.
+// DefaultDifficultyFactor — hệ số độ khó mặc định cho text thường.
 const DefaultDifficultyFactor = 1.0
 
-// DifficultNameMultiplier — applied when word matches the pronunciation dictionary.
+// DifficultNameMultiplier — áp dụng khi từ khớp từ điển phát âm (bội số 1.2×).
 const DifficultNameMultiplier = 1.2
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vietnamese abbreviation expansion table
+// Bảng mở rộng viết tắt tiếng Việt
 // ─────────────────────────────────────────────────────────────────────────────
 
-// vietnameseAbbreviations — common spoken-form expansions.
-// Key = abbreviation pattern (post-normalize); value = spoken form (lowercase).
-// Service applies expansion BEFORE word counting.
+// vietnameseAbbreviations — các viết tắt thường gặp → dạng đọc.
+// Key = mẫu viết tắt (sau chuẩn hóa); value = dạng đọc (chữ thường).
+// Service áp dụng mở rộng TRƯỚC khi đếm từ.
 var vietnameseAbbreviations = map[string]string{
 	"TP.HCM": "Thanh pho Ho Chi Minh",
 	"TP HCM": "Thanh pho Ho Chi Minh",
@@ -49,72 +49,72 @@ var vietnameseAbbreviations = map[string]string{
 	"VND":    "ve en de",
 }
 
-// digitInVN — single-digit number names for spoken-form expansion (0-9).
+// digitInVN — tên đọc của chữ số đơn (0-9).
 var digitInVN = map[byte]string{
 	'0': "khong", '1': "mot", '2': "hai", '3': "ba", '4': "bon",
 	'5': "nam", '6': "sau", '7': "bay", '8': "tam", '9': "chin",
 }
 
-// twoDigitInVN — two-digit numbers 10-19 special cases.
+// twoDigitInVN — các số hai chữ số đặc biệt 10-19.
 var twoDigitInVN = map[string]string{
 	"10": "muoi", "11": "muoi mot", "12": "muoi hai", "13": "muoi ba", "14": "muoi bon",
 	"15": "muoi lam", "16": "muoi sau", "17": "muoi bay", "18": "muoi tam", "19": "muoi chin",
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Regex patterns for spoken-form transformations
+// Các regex cho biến đổi sang dạng đọc
 // ─────────────────────────────────────────────────────────────────────────────
 
 var (
 	// "19h45" → "muoi chin gio bon muoi lam"
 	timeOfDayPattern = regexp.MustCompile(`\b(\d{1,2})h(\d{1,2})\b`)
-	// "7,2%" → "bay phay hai phan tram" (matches digit,digit%)
+	// "7,2%" → "bay phay hai phan tram" (khớp số,số%)
 	percentDecimalPattern = regexp.MustCompile(`\b(\d+),(\d+)%`)
 	// "7%" → "bay phan tram"
 	percentPattern = regexp.MustCompile(`\b(\d+)%`)
-	// Standalone integer (catches remaining numeric tokens after other transforms)
+	// Số nguyên đứng riêng (bắt các token số còn lại sau các biến đổi khác)
 	standaloneIntPattern = regexp.MustCompile(`\b\d+\b`)
-	// HTML/markup tags <...>
+	// Thẻ HTML/markup <...>
 	htmlTagPattern = regexp.MustCompile(`<[^>]+>`)
-	// Double cue syntax [[...]] (must come BEFORE single bracket)
+	// Cú pháp cue đôi [[...]] (phải xử lý TRƯỚC ngoặc đơn)
 	cueDoubleBracketPattern = regexp.MustCompile(`\[\[[^\]]*\]\]`)
-	// Cue syntax [...]
+	// Cú pháp cue [...]
 	cueBracketPattern = regexp.MustCompile(`\[[^\]]*\]`)
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Public API
+// API công khai
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ReadingPaceConfig captures presenter-specific factors for WPM calculation.
+// ReadingPaceConfig chứa các hệ số riêng của người dẫn để tính WPM.
 type ReadingPaceConfig struct {
-	DefaultWPM        float64           // configured words-per-minute
-	LanguageFactor    float64           // language difficulty multiplier (Vietnamese default 1.0)
-	DifficultyFactor  float64           // text difficulty (default 1.0)
-	PronunciationDict map[string]string // presenter.pronunciation_dict — difficult names → spoken form
+	DefaultWPM        float64           // số từ mỗi phút cấu hình
+	LanguageFactor    float64           // hệ số độ khó ngôn ngữ (tiếng Việt mặc định 1.0)
+	DifficultyFactor  float64           // độ khó của text (mặc định 1.0)
+	PronunciationDict map[string]string // presenter.pronunciation_dict — tên khó → dạng đọc
 }
 
-// PaceResult holds intermediate + final timing for a text block.
+// PaceResult chứa kết quả trung gian + cuối cùng cho một khối text.
 type PaceResult struct {
-	NormalizedText    string  // post-strip post-expansion
-	WordCount         int     // raw word count
-	AdjustedWordCount int     // accounts for difficult-name multiplier
-	EffectiveWPM      float64 // presenter base × language × difficulty
-	SpokenSeconds     int     // floor(adjusted_word_count / effective_wpm * 60)
+	NormalizedText    string  // text sau khi lược bỏ + mở rộng
+	WordCount         int     // số từ thô
+	AdjustedWordCount int     // tính cả bội số từ khó
+	EffectiveWPM      float64 // wpm gốc × ngôn ngữ × độ khó
+	SpokenSeconds     int     // floor(so_tu_da_dieu_chinh / wpm_hieu_dung * 60)
 }
 
-// CalculatePace computes spoken duration for a text.
+// CalculatePace tính thời lượng đọc (nói) cho một text.
 //
-// Steps:
-//  1. NormalizeText: strip HTML/cue/markup; expand Vietnamese abbreviations + numbers + time-of-day + percent
-//  2. Count words (whitespace split, after normalize)
-//  3. Apply difficult-name multiplier (1.2×) for words in pronunciation_dict
-//  4. Compute effective_wpm = base × language × difficulty
-//  5. spoken_seconds = floor(adjusted_word_count / effective_wpm × 60)
+// Các bước:
+//  1. NormalizeText: lược bỏ HTML/cue/markup; mở rộng viết tắt + số + giờ + phần trăm
+//  2. Đếm từ (tách theo khoảng trắng, sau chuẩn hóa)
+//  3. Áp bội số từ khó (1.2×) cho từ có trong pronunciation_dict
+//  4. Tính wpm_hieu_dung = gốc × ngôn ngữ × độ khó
+//  5. so_giay_noi = floor(so_tu_da_dieu_chinh / wpm_hieu_dung × 60)
 func CalculatePace(text string, cfg ReadingPaceConfig) PaceResult {
 	if cfg.DefaultWPM <= 0 {
 
-		cfg.DefaultWPM = 160.0 // canonical Vietnamese broadcast pace
+		cfg.DefaultWPM = 160.0 // nhịp đọc phát thanh tiếng Việt chuẩn
 	}
 	if cfg.LanguageFactor <= 0 {
 		cfg.LanguageFactor = DefaultLanguageFactor
@@ -127,7 +127,7 @@ func CalculatePace(text string, cfg ReadingPaceConfig) PaceResult {
 	words := splitWords(normalized)
 	wordCount := len(words)
 
-	// Difficult-name multiplier — +0.2 per word matched in pronunciation_dict
+	// Bội số từ khó — +0.2 cho mỗi từ khớp trong pronunciation_dict
 	adjustedWC := float64(wordCount)
 	if len(cfg.PronunciationDict) > 0 {
 		extra := 0.0
@@ -158,34 +158,34 @@ func CalculatePace(text string, cfg ReadingPaceConfig) PaceResult {
 	}
 }
 
-// NormalizeText strips markup + expands Vietnamese abbreviations + spoken-form numbers.
+// NormalizeText lược bỏ markup + mở rộng viết tắt + số sang dạng đọc.
 //
-// Order of operations matters:
-//  1. Strip HTML tags
-//  2. Strip cue syntax [[...]] then [...]
-//  3. Expand registered abbreviations (TP.HCM → Thanh pho Ho Chi Minh) BEFORE number expansion
-//  4. Expand time-of-day patterns (19h45 → spoken)
-//  5. Expand percent-decimal (7,2% → spoken)
-//  6. Expand percent (7% → spoken)
-//  7. Expand standalone integers
-//  8. Collapse extra whitespace
+// Thứ tự thao tác quan trọng:
+//  1. Lược bỏ thẻ HTML
+//  2. Lược bỏ cú pháp cue [[...]] rồi [...]
+//  3. Mở rộng viết tắt đã đăng ký (TP.HCM → Thanh pho Ho Chi Minh) TRƯỚC khi mở rộng số
+//  4. Mở rộng mẫu giờ (19h45 → dạng đọc)
+//  5. Mở rộng phần trăm thập phân (7,2% → dạng đọc)
+//  6. Mở rộng phần trăm (7% → dạng đọc)
+//  7. Mở rộng số nguyên đứng riêng
+//  8. Gộp khoảng trắng thừa
 func NormalizeText(text string) string {
 	if text == "" {
 		return ""
 	}
 	out := text
 
-	// Strip markup
+	// Lược bỏ markup
 	out = htmlTagPattern.ReplaceAllString(out, " ")
 	out = cueDoubleBracketPattern.ReplaceAllString(out, " ")
 	out = cueBracketPattern.ReplaceAllString(out, " ")
 
-	// Vietnamese abbreviations BEFORE number expansion (avoids "TP.HCM" being split mid-pattern)
+	// Viết tắt tiếng Việt TRƯỚC khi mở rộng số (tránh "TP.HCM" bị tách giữa mẫu)
 	for abbrev, spoken := range vietnameseAbbreviations {
 		out = strings.ReplaceAll(out, abbrev, " "+spoken+" ")
 	}
 
-	// Time-of-day "19h45" → "muoi chin gio bon muoi lam"
+	// Giờ "19h45" → "muoi chin gio bon muoi lam"
 	out = timeOfDayPattern.ReplaceAllStringFunc(out, func(match string) string {
 		parts := timeOfDayPattern.FindStringSubmatch(match)
 		if len(parts) < 3 {
@@ -196,7 +196,7 @@ func NormalizeText(text string) string {
 		return " " + hour + " gio " + minute + " "
 	})
 
-	// Percent-decimal "7,2%" → "bay phay hai phan tram"
+	// Phần trăm thập phân "7,2%" → "bay phay hai phan tram"
 	out = percentDecimalPattern.ReplaceAllStringFunc(out, func(match string) string {
 		trimmed := strings.TrimSuffix(match, "%")
 		parts := strings.Split(trimmed, ",")
@@ -208,22 +208,22 @@ func NormalizeText(text string) string {
 		return " " + integer + " phay " + decimal + " phan tram "
 	})
 
-	// Percent "7%" → "bay phan tram"
+	// Phần trăm "7%" → "bay phan tram"
 	out = percentPattern.ReplaceAllStringFunc(out, func(match string) string {
 		trimmed := strings.TrimSuffix(match, "%")
 		return " " + expandNumber(trimmed) + " phan tram "
 	})
 
-	// Standalone integers (catch remaining numeric tokens)
+	// Số nguyên đứng riêng (bắt các token số còn lại)
 	out = standaloneIntPattern.ReplaceAllStringFunc(out, expandNumber)
 
-	// Collapse whitespace
+	// Gộp khoảng trắng
 	out = strings.Join(strings.Fields(out), " ")
 	return out
 }
 
-// expandNumber returns spoken form of a numeric string (limited to 0-99).
-// Larger numbers: simple digit-by-digit fallback (acceptable Phase 1).
+// expandNumber trả về dạng đọc của một chuỗi số (giới hạn 0-99).
+// Số lớn hơn: dự phòng đọc từng chữ số (chấp nhận được ở Phase 1).
 func expandNumber(s string) string {
 	if v, ok := twoDigitInVN[s]; ok {
 		return v
@@ -231,7 +231,7 @@ func expandNumber(s string) string {
 	if len(s) == 1 {
 		return digitInVN[s[0]]
 	}
-	// 20-99: combine tens-digit name + "muoi" + units
+	// 20-99: ghép tên hàng chục + "muoi" + hàng đơn vị
 	if len(s) == 2 {
 		tens := s[0]
 		units := s[1]
@@ -259,14 +259,14 @@ func expandNumber(s string) string {
 		if units == '0' {
 			return tensWord
 		}
-		// Vietnamese rule: "5" after a tens digit → "lam" not "nam"
+		// Quy tắc tiếng Việt: "5" sau chữ số hàng chục → "lam" thay vì "nam"
 		unitsWord := digitInVN[units]
 		if units == '5' && tens != '1' {
 			unitsWord = "lam"
 		}
 		return tensWord + " " + unitsWord
 	}
-	// 3+ digit numbers: digit-by-digit fallback (Phase 1 acceptable; Phase 2+ may expand)
+	// Số từ 3 chữ số trở lên: dự phòng đọc từng chữ số (Phase 1 chấp nhận; Phase 2+ có thể mở rộng)
 	var parts []string
 	for i := 0; i < len(s); i++ {
 		parts = append(parts, digitInVN[s[i]])
@@ -274,7 +274,7 @@ func expandNumber(s string) string {
 	return strings.Join(parts, " ")
 }
 
-// splitWords splits normalized text on whitespace; filters empty strings.
+// splitWords tách text đã chuẩn hóa theo khoảng trắng; lọc bỏ chuỗi rỗng.
 func splitWords(text string) []string {
 	return strings.Fields(text)
 }
