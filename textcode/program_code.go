@@ -1,8 +1,8 @@
 // FILE: pkg/util/program_code.go
-// Package textcode generates and normalizes content codes.
+// Package textcode sinh và chuẩn hóa mã nội dung.
 //
-// Vietnamese diacritic handling: Đ/đ do NOT decompose under NFD, so they are
-// replaced explicitly BEFORE Unicode normalization.
+// Xử lý dấu tiếng Việt: Đ/đ KHÔNG phân rã qua NFD, nên được thay thế tường minh
+// TRƯỚC khi chuẩn hóa Unicode.
 package util
 
 import (
@@ -20,9 +20,9 @@ var (
 	nonAlphaNumericRegex = regexp.MustCompile(`[^A-Z0-9 ]+`)
 )
 
-// GenerateExpectedProgramCode generates expected code for a program.
-// Format: {DEPT}_{CAT}_{TITLE}, max 30 chars.
-// Deterministic: same title always yields the same code.
+// GenerateExpectedProgramCode sinh mã kỳ vọng cho một chương trình.
+// Định dạng: {DEPT}_{CAT}_{TITLE}, tối đa 30 ký tự.
+// Tính xác định: cùng title luôn cho ra cùng mã.
 func GenerateExpectedProgramCode(departmentCode, categoryCode, title string) string {
 	prefix := departmentCode + "_" + categoryCode
 
@@ -40,15 +40,15 @@ func GenerateExpectedProgramCode(departmentCode, categoryCode, title string) str
 	return code
 }
 
-// GenerateExpectedEpisodeCode generates expected code for a series episode.
-// Format: {SERIES_CODE}_T{N}
+// GenerateExpectedEpisodeCode sinh mã kỳ vọng cho một tập của series.
+// Định dạng: {SERIES_CODE}_T{N}
 func GenerateExpectedEpisodeCode(departmentCode, categoryCode, seriesTitle string, episodeNumber int) string {
 	base := GenerateExpectedProgramCode(departmentCode, categoryCode, seriesTitle)
 	return fmt.Sprintf("%s_T%d", base, episodeNumber)
 }
 
-// normalizeVietnamese removes Vietnamese diacritics.
-// Handles Đ/đ explicitly (not decomposed by NFD), then strips combining marks.
+// normalizeVietnamese loại bỏ dấu tiếng Việt.
+// Xử lý Đ/đ tường minh (không phân rã bởi NFD), sau đó lược bỏ các dấu kết hợp.
 func normalizeVietnamese(s string) string {
 	s = strings.ReplaceAll(s, "Đ", "D")
 	s = strings.ReplaceAll(s, "đ", "d")
@@ -62,7 +62,7 @@ func normalizeVietnamese(s string) string {
 	return result
 }
 
-// sanitizeToAllowedCharset keeps only [A-Z0-9_]
+// sanitizeToAllowedCharset chỉ giữ lại [A-Z0-9_]
 func sanitizeToAllowedCharset(s string) string {
 	var b strings.Builder
 	for _, r := range s {
@@ -73,8 +73,8 @@ func sanitizeToAllowedCharset(s string) string {
 	return b.String()
 }
 
-// NormalizeTitleForComparison normalizes a title for reuse compatibility check.
-// Strips Vietnamese diacritics, uppercases, removes non-alphanumeric.
+// NormalizeTitleForComparison chuẩn hóa title để kiểm tra khả năng tái dùng.
+// Loại bỏ dấu tiếng Việt, viết hoa, bỏ ký tự không phải chữ-số.
 func NormalizeTitleForComparison(title string) string {
 	s := normalizeVietnamese(title)
 	s = strings.ToUpper(s)
