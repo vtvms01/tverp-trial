@@ -2,8 +2,8 @@ package util
 
 import "time"
 
-// VNLocation returns the Asia/Ho_Chi_Minh location (UTC+7), with an ICT
-// fixed-zone fallback if tzdata is unavailable.
+// VNLocation trả về location Asia/Ho_Chi_Minh (UTC+7), với dự phòng
+// fixed-zone ICT nếu tzdata không khả dụng.
 func VNLocation() *time.Location {
 	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
 	if err != nil {
@@ -12,7 +12,7 @@ func VNLocation() *time.Location {
 	return loc
 }
 
-// TodayInVN returns midnight (00:00) of the current day in VN timezone.
+// TodayInVN trả về nửa đêm (00:00) của ngày hiện tại theo múi giờ VN.
 func TodayInVN() time.Time {
 	loc := VNLocation()
 	now := time.Now().In(loc)
